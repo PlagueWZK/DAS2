@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像数据增强系统 - 批量处理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: #374151;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0;
+            background-color: white;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #1f2937;
+            color: white;
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 3px solid #3b82f6;
+        }
+
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            width: 280px;
+            background: #f9fafb;
+            border-right: 2px solid #e5e7eb;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .right-panel {
+            width: 350px;
+            background: #f9fafb;
+            border-left: 2px solid #e5e7eb;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .image-display-section {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .image-preview-box {
+            flex: 1;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+        }
+
+        .image-preview-box h3 {
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 1.1rem;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+        }
+
+        .image-preview-box img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 5px;
+            flex: 1;
+        }
+
+        .bottom-controls {
+            padding: 15px;
+            background: #f9fafb;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        h1 {
+            color: white;
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .checkbox-item input,
+        .checkbox-item label {
+            /*  input 和 label "无视" 鼠标点击，
+               点击事件会直接“穿透”到父级 div 上 */
+            pointer-events: none;
+        }
+
+        .subtitle {
+            color: #d1d5db;
+            margin: 5px 0 0 0;
+            font-size: 0.9rem;
+            font-weight: 400;
+        }
+
+        .upload-section {
+            border: 2px dashed #d1d5db;
+            padding: 30px 15px;
+            text-align: center;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .upload-section:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+
+        .file-list h3 {
+            background: #374151;
+            color: white;
+            padding: 10px 15px;
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .file-items-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .file-item:hover {
+            background: #f3f4f6;
+        }
+
+        .file-item.selected {
+            background: #dbeafe;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .file-item-name {
+            flex: 1;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-item-remove {
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 2px 8px;
+            font-size: 1.2rem;
+        }
+
+        .file-item-remove:hover {
+            color: #a02020;
+        }
+
+        .augmentation-options {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .options-header {
+            background: #374151;
+            color: white;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .checkbox-group {
+            padding: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background-color: #f9fafb;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            margin-bottom: 8px;
+        }
+
+        .checkbox-item:hover {
+            border-color: #3b82f6;
+            background: white;
+        }
+
+        .checkbox-item input {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.9rem;
+        }
+
+        .checkbox-item.disabled {
+            background-color: #f3f4f6;
+            border-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .parameter-controls {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .parameter-header {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-item label {
+            font-weight: 500;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .slider-item input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            background: #d1d5db;
+        }
+
+        .slider-item input[type="range"]:disabled {
+            background: #e5e7eb;
+            cursor: not-allowed;
+        }
+
+        .slider-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .slider-item span {
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-success {
+            background: #10b981;
+            flex: 1;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .placeholder-text {
+            text-align: center;
+            color: #9ca3af;
+            padding: 40px 20px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            width: 100%;
+        }
+
+        .message {
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        .loading p {
+            font-size: 0.9rem;
+            color: #374151;
+            margin: 0;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部标题栏 -->
+    <div class="header">
+        <h1>图像数据增强系统</h1>
+        <p class="subtitle">支持批量图像处理和数据增强</p>
+    </div>
+
+    <!-- 主布局区域 -->
+    <div class="main-layout">
+        <!-- 左侧面板: 图片列表 -->
+        <div class="left-panel">
+            <div class="upload-section" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p style="font-size: 0.95rem; color: #374151; margin-bottom: 8px; font-weight: 500;">上传图片</p>
+                <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+            </div>
+
+            <div class="file-list" id="fileList" style="display: none;">
+                <h3>图片列表</h3>
+                <div class="file-items-container" id="fileItems"></div>
+            </div>
+
+            <div class="augmentation-options" id="augmentationOptions" style="display: none;">
+                <div class="options-header">增强方法</div>
+                <div class="checkbox-group">
+                    <div class="checkbox-item" onclick="toggleCheckbox('rotation')">
+                        <input type="checkbox" id="rotation" value="rotation" checked>
+                        <label for="rotation">🔄 随机旋转</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('flip')">
+                        <input type="checkbox" id="flip" value="flip" checked>
+                        <label for="flip">🔃 随机翻转</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('crop')">
+                        <input type="checkbox" id="crop" value="crop" checked>
+                        <label for="crop">✂️ 随机裁剪</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('scale')">
+                        <input type="checkbox" id="scale" value="scale" checked>
+                        <label for="scale">📏 随机缩放</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('brightness')">
+                        <input type="checkbox" id="brightness" value="brightness">
+                        <label for="brightness">💡 亮度调节</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('contrast')">
+                        <input type="checkbox" id="contrast" value="contrast">
+                        <label for="contrast">🌗 对比度</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('noise')">
+                        <input type="checkbox" id="noise" value="noise">
+                        <label for="noise">📡 噪声</label>
+                    </div>
+                    <div class="checkbox-item" onclick="toggleCheckbox('blur')">
+                        <input type="checkbox" id="blur" value="blur">
+                        <label for="blur">🌫️ 模糊</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间面板: 原图和处理后图片 -->
+        <div class="center-panel">
+            <div class="image-display-section">
+                <div class="image-preview-box">
+                    <h3>原图</h3>
+                    <div class="placeholder-text" id="originalPlaceholder">请选择图片</div>
+                    <img id="originalImage" style="display: none;" alt="原图">
+                </div>
+                <div class="image-preview-box">
+                    <h3>处理后</h3>
+                    <div class="placeholder-text" id="processedPlaceholder">等待处理</div>
+                    <img id="processedImage" style="display: none;" alt="处理后">
+                </div>
+            </div>
+
+            <div class="bottom-controls">
+                <div id="messageArea"></div>
+                <div class="action-buttons">
+                    <button class="btn btn-success" id="augmentBtn" onclick="applyBatchAugmentation()" disabled>开始处理</button>
+                    <button class="btn" onclick="downloadAll()" id="downloadAllBtn" disabled>下载全部</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板: 处理后图片列表 -->
+        <div class="right-panel">
+            <div class="file-list">
+                <h3>处理结果</h3>
+                <div class="file-items-container" id="resultsGrid">
+                    <div class="placeholder-text">暂无处理结果</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let uploadedFiles = [];
+    let processedResults = [];
+    let selectedFileIndex = -1;
+
+    // 文件上传相关
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileList = document.getElementById('fileList');
+    const fileItems = document.getElementById('fileItems');
+    const augmentationOptions = document.getElementById('augmentationOptions');
+    const messageArea = document.getElementById('messageArea');
+    const originalImage = document.getElementById('originalImage');
+    const processedImage = document.getElementById('processedImage');
+    const originalPlaceholder = document.getElementById('originalPlaceholder');
+    const processedPlaceholder = document.getElementById('processedPlaceholder');
+    const augmentBtn = document.getElementById('augmentBtn');
+
+    function toggleCheckbox(id) {
+        const checkbox = document.getElementById(id);
+        if (checkbox.disabled) return;
+        checkbox.checked = !checkbox.checked;
+    }
+
+    // 拖拽上传功能
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files);
+        handleMultipleFiles(files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        handleMultipleFiles(files);
+    });
+
+    function showMessage(message, type) {
+        messageArea.innerHTML = `<div class="message ${type}">${message}</div>`;
+        setTimeout(() => {
+            messageArea.innerHTML = '';
+        }, 5000);
+    }
+
+    function showLoading() {
+        messageArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>处理中，请稍候...</p></div>';
+    }
+
+    async function handleMultipleFiles(files) {
+        if (files.length === 0) return;
+
+        showLoading();
+
+        let successCount = 0;
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('files', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success && Array.isArray(data.files)) {
+                    uploadedFiles = uploadedFiles.concat(data.files);
+                    successCount += data.files.length;
+                } else {
+                    console.error('上传失败', data.error || data);
+                }
+            } catch (error) {
+                console.error('上传失败', error);
+            }
+        }
+
+        if (successCount > 0) {
+            showMessage(`成功上传 ${successCount} 个文件！`, 'success');
+            displayFileList();
+            augmentationOptions.style.display = 'block';
+
+            // 自动选中第一张图片
+            if (uploadedFiles.length > 0 && selectedFileIndex === -1) {
+                selectFile(0);
+            }
+        } else {
+            showMessage('上传失败，请重试', 'error');
+        }
+    }
+
+    function displayFileList() {
+        fileList.style.display = 'block';
+
+        fileItems.innerHTML = uploadedFiles.map((file, index) => `
+                <div class="file-item ${index === selectedFileIndex ? 'selected' : ''}" onclick="selectFile(${index})">
+                    <span class="file-item-name">📄 ${file.original_name}</span>
+                    <span class="file-item-remove" onclick="event.stopPropagation(); removeFile(${index})">✖</span>
+                </div>
+            `).join('');
+
+        augmentBtn.disabled = false;
+    }
+
+    async function selectFile(index) {
+        selectedFileIndex = index;
+        displayFileList();
+
+        // 显示原图 - 使用预览接口
+        const file = uploadedFiles[index];
+
+        try {
+            const response = await fetch(`/preview/${file.filename}`);
+            const data = await response.json();
+
+            if (data.success) {
+                originalImage.src = data.image_data;
+                originalImage.style.display = 'block';
+                originalPlaceholder.style.display = 'none';
+            } else {
+                originalPlaceholder.textContent = '加载失败';
+            }
+        } catch (error) {
+            console.error('加载原图失败:', error);
+            originalPlaceholder.textContent = '加载失败';
+        }
+
+        if (processedResults[index] && processedResults[index].success) {
+            await loadProcessedImage(index);
+        } else {
+            processedImage.style.display = 'none';
+            processedPlaceholder.style.display = 'block';
+            processedPlaceholder.textContent = '等待处理';
+        }
+    }
+
+    function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+        processedResults.splice(index, 1);
+
+        if (selectedFileIndex === index) {
+            selectedFileIndex = -1;
+            originalImage.style.display = 'none';
+            originalPlaceholder.style.display = 'block';
+            processedImage.style.display = 'none';
+            processedPlaceholder.style.display = 'block';
+        } else if (selectedFileIndex > index) {
+            selectedFileIndex--;
+        }
+
+        if (uploadedFiles.length === 0) {
+            fileList.style.display = 'none';
+            augmentationOptions.style.display = 'none';
+            augmentBtn.disabled = true;
+            originalPlaceholder.textContent = '请选择图片';
+            processedPlaceholder.textContent = '等待处理';
+        } else {
+            displayFileList();
+        }
+    }
+
+    function applyBatchAugmentation() {
+        if (uploadedFiles.length === 0) {
+            showMessage('请先上传图像文件', 'error');
+            return;
+        }
+
+        const checkboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]:checked');
+        const augmentations = Array.from(checkboxes).map(cb => cb.value);
+
+        if (augmentations.length === 0) {
+            showMessage('请至少选择一种数据增强方法', 'error');
+            return;
+        }
+
+        const filenames = uploadedFiles.map(f => f.filename);
+
+        showLoading();
+        document.getElementById('augmentBtn').disabled = true;
+
+        fetch('/augment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filenames: filenames,
+                augmentations: augmentations
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('augmentBtn').disabled = false;
+
+                if (data.success) {
+                    processedResults = data.results;
+                    showMessage(data.message, 'success');
+                    displayResults();
+                } else {
+                    showMessage(`处理失败: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                document.getElementById('augmentBtn').disabled = false;
+                showMessage(`处理失败: ${error.message}`, 'error');
+            });
+    }
+
+    async function displayResults() {
+        const resultsGrid = document.getElementById('resultsGrid');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+        resultsGrid.innerHTML = processedResults.map((result, index) => {
+            if (result.success) {
+                return `
+                    <div class="file-item ${index === selectedFileIndex ? 'selected' : ''}" onclick="selectFile(${index})">
+                        <span class="file-item-name">✅ ${uploadedFiles[index].original_name}</span>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="file-item">
+                        <span class="file-item-name" style="color: #dc3545;">❌ ${uploadedFiles[index].original_name}</span>
+                    </div>
+                `;
+            }
+        }).join('');
+
+        downloadAllBtn.disabled = false;
+
+        if (selectedFileIndex >= 0 && processedResults[selectedFileIndex] && processedResults[selectedFileIndex].success) {
+            await loadProcessedImage(selectedFileIndex);
+        }
+    }
+
+    async function loadProcessedImage(index) {
+        const result = processedResults[index];
+        if (!result || !result.success) return;
+
+        try {
+            const response = await fetch(`/preview_result/${result.output_filename}`);
+            const data = await response.json();
+
+            if (data.success) {
+                processedImage.src = data.image_data;
+                processedImage.style.display = 'block';
+                processedPlaceholder.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('加载处理后图片失败:', error);
+        }
+    }
+
+    function downloadSingle(filename) {
+        window.open(`/download/${filename}`, '_blank');
+    }
+
+    function downloadAll() {
+        const successResults = processedResults.filter(r => r.success);
+        if (successResults.length === 0) {
+            showMessage('没有可下载的文件', 'error');
+            return;
+        }
+
+        const filenames = successResults.map(r => r.output_filename);
+
+        fetch('/download_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filenames: filenames })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('下载失败');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'augmented_images.zip';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showMessage('全部图片已打包下载！', 'success');
+        })
+        .catch(error => {
+            showMessage(`下载失败: ${error.message}`, 'error');
+        });
+    }
+</script>
+</body>
+</html>
