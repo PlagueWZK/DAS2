@@ -22,11 +22,22 @@ pip install -r requirements.txt
 python app.py
 ```
 
-应用将在 http://localhost:5000 启动
+## 打包应用
+
+1. 确保安装了pyinstaller依赖
+    ```bash
+    pip install pyinstaller
+    ```
+
+2. 运行打包
+    ```bash
+    pyinstaller app.spec
+    ```
+应用将在 http://localhost:10000 启动
 
 ## 使用方法
 
-1. 打开浏览器访问 http://localhost:5000
+1. 打开浏览器访问 http://localhost:10000
 2. 上传图像文件（支持拖拽上传）
 3. 选择需要应用的数据增强方法
 4. 点击"应用数据增强"按钮
