@@ -1,65 +1,76 @@
-# 图像数据增强系统
+﻿# 图像数据增强系统 (DAS)
 
-一个简单的图像数据增强Web应用，支持多种图像增强方法。
+面向批量图像处理的轻量级数据增强 Web 应用，支持多图上传、增强、预览与打包下载。
 
-## 功能特性
+## 功能概览
 
-- 随机旋转：在指定角度范围内随机旋转图像
-- 随机翻转：水平或垂直翻转图像
-- 随机裁剪：按比例随机裁剪图像
-- 随机缩放：按比例随机缩放图像
-- 颜色抖动：随机调整图像的亮度、对比度和饱和度
+- 多图上传与拖拽导入
+- 批量数据增强（旋转、翻转、裁剪、缩放、颜色抖动、亮度、对比度、噪声、模糊）
+- 原图/处理后对比预览
+- 一键打包下载
+- 多线程并行处理
 
-## 安装依赖
+## 技术栈
+
+- 后端：Flask、Werkzeug、Gunicorn
+- 图像处理：OpenCV、Pillow、NumPy
+- 前端：HTML/CSS/JavaScript
+
+## 快速开始
 
 ```bash
 pip install -r requirements.txt
-```
-
-## 运行应用
-
-```bash
 python app.py
 ```
 
-## 打包应用
+浏览器访问：`http://localhost:10000`
 
-1. 确保安装了pyinstaller依赖
-    ```bash
-    pip install pyinstaller
-    ```
+如需自定义端口，可设置环境变量：
 
-2. 运行打包
-    ```bash
-    pyinstaller app.spec
-    ```
-应用将在 http://localhost:10000 启动
+```bash
+set PORT=10000
+```
 
-## 使用方法
+## 使用流程
 
-1. 打开浏览器访问 http://localhost:10000
-2. 上传图像文件（支持拖拽上传）
-3. 选择需要应用的数据增强方法
-4. 点击"应用数据增强"按钮
-5. 查看原始图像和增强后的图像对比
-6. 下载增强后的图像
+1. 上传图像（支持多选和拖拽）
+2. 选择需要的增强方法
+3. 点击“开始处理”
+4. 预览原图和处理后结果
+5. 下载单张或全部打包结果
 
-## 支持的图像格式
+## 主要接口
 
-- PNG
-- JPG/JPEG
-- GIF
-- BMP
+- `POST /upload`：表单字段 `files`，支持多文件
+- `POST /augment`：`{"filenames": [], "augmentations": []}`
+- `GET /preview/<filename>`：原图预览（Base64）
+- `GET /preview_result/<filename>`：结果预览（Base64）
+- `GET /download/<filename>`：下载单张结果
+- `POST /download_all`：`{"filenames": []}`，返回 ZIP
 
-## 文件结构
+## 项目结构
 
 ```
-DAS2/
-├── app.py                 # Flask Web应用
+DAS/
+├── app.py                 # Flask Web 应用与接口
 ├── data_augmentation.py   # 数据增强核心功能
-├── requirements.txt       # 依赖包列表
+├── requirements.txt       # 依赖列表
 ├── templates/
-│   └── index.html        # 前端界面
-├── uploads/              # 上传文件存储目录
-└── outputs/              # 处理后文件存储目录
+│   └── index.html         # 前端界面
+├── uploads/               # 上传文件目录（运行时生成）
+├── outputs/               # 处理后文件目录（运行时生成）
+├── app.spec               # PyInstaller 打包配置
+└── render.yaml            # Render 部署配置
 ```
+
+## 打包与部署
+
+- 本地打包：
+
+```bash
+pip install pyinstaller
+pyinstaller app.spec
+```
+
+- Render 部署：使用 `render.yaml`，启动命令为 `gunicorn app:app`
+
