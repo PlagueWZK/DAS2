@@ -4,6 +4,7 @@ import sys
 import uuid
 import cv2
 import time
+import random
 import threading
 import zipfile
 from io import BytesIO
@@ -62,6 +63,28 @@ def image_to_base64(image_path):
     return encoded_string
 
 
+def resolve_intensity_setting(setting, as_int=False):
+    if not isinstance(setting, dict):
+        return None
+
+    mode = setting.get('mode', 'fixed')
+    try:
+        if mode == 'random':
+            min_val = float(setting.get('min'))
+            max_val = float(setting.get('max'))
+            if min_val > max_val:
+                min_val, max_val = max_val, min_val
+            value = random.uniform(min_val, max_val)
+        else:
+            value = float(setting.get('value'))
+    except (TypeError, ValueError):
+        return None
+
+    if as_int:
+        return int(round(value))
+    return value
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -95,7 +118,7 @@ def upload_file():
         return jsonify({'error': f'上传失败: {str(e)}'}), 500
 
 
-def process_single_image(filename, augmentations, task_id, index, total):
+def process_single_image(filename, augmentations, task_id, index, total, param_settings=None):
     try:
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if not os.path.exists(input_path):
@@ -108,7 +131,15 @@ def process_single_image(filename, augmentations, task_id, index, total):
         if image is None:
             return {'success': False, 'filename': filename, 'error': '无法读取图像文件'}
 
-        params = {'noise_type': 'gaussian', 'blur_type': 'gaussian'}
+        param_settings = param_settings or {}
+        params = {
+            'noise_type': 'gaussian',
+            'blur_type': 'gaussian',
+            'brightness_value': resolve_intensity_setting(param_settings.get('brightness')),
+            'contrast_value': resolve_intensity_setting(param_settings.get('contrast')),
+            'noise_intensity': resolve_intensity_setting(param_settings.get('noise')),
+            'blur_intensity': resolve_intensity_setting(param_settings.get('blur'), as_int=True),
+        }
         augmented_image = augmenter.apply_augmentation(image, augmentations, **params)
 
         cv2.imwrite(output_path, augmented_image)
@@ -130,6 +161,7 @@ def augment_image():
         data = request.get_json()
         filenames = data.get('filenames', [])
         augmentations = data.get('augmentations', [])
+        param_settings = data.get('params', {})
 
         if not filenames:
             return jsonify({'error': '没有指定文件名'}), 400
@@ -144,7 +176,7 @@ def augment_image():
         max_workers = min(8, os.cpu_count() or 4)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_single_image, fn, augmentations, task_id, idx, total): idx
+            futures = {executor.submit(process_single_image, fn, augmentations, task_id, idx, total, param_settings): idx
                       for idx, fn in enumerate(filenames)}
 
             for future in as_completed(futures):

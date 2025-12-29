@@ -157,9 +157,12 @@ class DataAugmentation:
             print(f"颜色抖动处理失败: {e}")
             return image
 
-    def adjust_brightness(self, image):
+    def adjust_brightness(self, image, intensity=None):
         """随机调节亮度"""
-        brightness = random.uniform(0.5, 1.8)
+        if intensity is None:
+            brightness = random.uniform(0.5, 1.8)
+        else:
+            brightness = max(0.1, float(intensity))
         if isinstance(image, np.ndarray):
             image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         else:
@@ -172,9 +175,12 @@ class DataAugmentation:
             return cv2.cvtColor(np.array(result), cv2.COLOR_RGB2BGR)
         return result
 
-    def adjust_contrast(self, image):
+    def adjust_contrast(self, image, intensity=None):
         """随机调节对比度"""
-        contrast = random.uniform(0.5, 1.8)
+        if intensity is None:
+            contrast = random.uniform(0.5, 1.8)
+        else:
+            contrast = max(0.1, float(intensity))
         if isinstance(image, np.ndarray):
             image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         else:
@@ -187,7 +193,7 @@ class DataAugmentation:
             return cv2.cvtColor(np.array(result), cv2.COLOR_RGB2BGR)
         return result
 
-    def add_noise(self, image, noise_type='gaussian'):
+    def add_noise(self, image, noise_type='gaussian', intensity=None):
         """添加噪声"""
         if isinstance(image, np.ndarray):
             img_array = image.copy()
@@ -196,7 +202,10 @@ class DataAugmentation:
 
         if noise_type == 'gaussian':
             # 高斯噪声
-            noise = np.random.normal(0, 25, img_array.shape).astype(np.uint8)
+            noise_sigma = 25 if intensity is None else float(intensity)
+            if noise_sigma <= 0:
+                return image
+            noise = np.random.normal(0, noise_sigma, img_array.shape).astype(np.uint8)
             result = cv2.add(img_array, noise)
         else:
             # 椒盐噪声
@@ -213,17 +222,24 @@ class DataAugmentation:
             return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
         return result
 
-    def apply_blur(self, image, blur_type='gaussian'):
+    def apply_blur(self, image, blur_type='gaussian', intensity=None):
         """应用模糊效果"""
         if isinstance(image, np.ndarray):
             img_array = image.copy()
         else:
             img_array = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-        if blur_type == 'gaussian':
-            result = cv2.GaussianBlur(img_array, (15, 15), 0)
+        kernel_size = 15 if intensity is None else int(round(float(intensity)))
+        if kernel_size <= 1:
+            result = img_array
         else:
-            result = cv2.medianBlur(img_array, 15)
+            kernel_size = min(kernel_size, 51)
+            if kernel_size % 2 == 0:
+                kernel_size += 1
+            if blur_type == 'gaussian':
+                result = cv2.GaussianBlur(img_array, (kernel_size, kernel_size), 0)
+            else:
+                result = cv2.medianBlur(img_array, kernel_size)
 
         if not isinstance(image, np.ndarray):
             return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
@@ -245,15 +261,19 @@ class DataAugmentation:
             elif aug == 'color':
                 result = self.color_jitter(result)
             elif aug == 'brightness':
-                result = self.adjust_brightness(result)
+                intensity = params.get('brightness_value')
+                result = self.adjust_brightness(result, intensity=intensity)
             elif aug == 'contrast':
-                result = self.adjust_contrast(result)
+                intensity = params.get('contrast_value')
+                result = self.adjust_contrast(result, intensity=intensity)
             elif aug == 'noise':
                 noise_type = params.get('noise_type', 'gaussian')
-                result = self.add_noise(result, noise_type)
+                intensity = params.get('noise_intensity')
+                result = self.add_noise(result, noise_type, intensity=intensity)
             elif aug == 'blur':
                 blur_type = params.get('blur_type', 'gaussian')
-                result = self.apply_blur(result, blur_type)
+                intensity = params.get('blur_intensity')
+                result = self.apply_blur(result, blur_type, intensity=intensity)
 
         return result
 
